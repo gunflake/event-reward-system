@@ -1,5 +1,5 @@
 export default {
-  displayName: 'event-reward-system-e2e',
+  displayName: 'gateway-e2e',
   preset: '../../jest.preset.js',
   globalSetup: '<rootDir>/src/support/global-setup.ts',
   globalTeardown: '<rootDir>/src/support/global-teardown.ts',
@@ -14,5 +14,5 @@ export default {
     ],
   },
   moduleFileExtensions: ['ts', 'js', 'html'],
-  coverageDirectory: '../../coverage/event-reward-system-e2e',
+  coverageDirectory: '../../coverage/gateway-e2e',
 };

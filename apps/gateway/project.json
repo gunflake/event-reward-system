@@ -1,7 +1,7 @@
 {
-  "name": "event-reward-system",
+  "name": "gateway",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/event-reward-system/src",
+  "sourceRoot": "apps/gateway/src",
   "projectType": "application",
   "tags": [],
   "targets": {
@@ -23,15 +23,15 @@
       "defaultConfiguration": "development",
       "dependsOn": ["build"],
       "options": {
-        "buildTarget": "event-reward-system:build",
+        "buildTarget": "gateway:build",
         "runBuildTargetDependencies": false
       },
       "configurations": {
         "development": {
-          "buildTarget": "event-reward-system:build:development"
+          "buildTarget": "gateway:build:development"
         },
         "production": {
-          "buildTarget": "event-reward-system:build:production"
+          "buildTarget": "gateway:build:production"
         }
       }
     },
