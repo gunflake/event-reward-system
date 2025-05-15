@@ -14,7 +14,11 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@maplestory/common": ["libs/common/src/index.ts"],
+      "@maplestory/database": ["libs/database/src/index.ts"],
+      "@maplestory/user": ["libs/user/src/index.ts"]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }
