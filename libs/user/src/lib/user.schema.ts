@@ -13,7 +13,7 @@ export class User extends Document {
   @Prop({ required: true })
   nickname!: string;
 
-  @Prop({ enum: Role, default: Role.USER })
+  @Prop({ type: String, enum: Role, default: Role.USER })
   role!: Role;
 }
 
