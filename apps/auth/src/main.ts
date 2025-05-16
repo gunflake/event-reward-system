@@ -3,7 +3,7 @@
  * This is only a minimal backend to get started.
  */
 
-import { HttpExceptionFilter, TransformInterceptor } from '@maplestory/common';
+import { HttpExceptionFilter } from '@maplestory/common';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -19,9 +19,6 @@ async function bootstrap() {
       transform: true,
     })
   );
-
-  // 전역 응답 변환 인터셉터 적용
-  app.useGlobalInterceptors(new TransformInterceptor());
 
   // 전역 예외 필터 등록
   app.useGlobalFilters(new HttpExceptionFilter());
