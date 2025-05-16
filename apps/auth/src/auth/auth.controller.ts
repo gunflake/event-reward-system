@@ -1,13 +1,13 @@
 import { CreateUserDto } from '@maplestory/user';
 import { Body, Controller, Post } from '@nestjs/common';
-import { UserService } from './user.service';
+import { AuthService } from './auth.service';
 
 @Controller('users')
-export class UserController {
-  constructor(private readonly userService: UserService) {}
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
 
   @Post('signup')
   async signup(@Body() createUserDto: CreateUserDto): Promise<void> {
-    await this.userService.create(createUserDto);
+    await this.authService.create(createUserDto);
   }
 }

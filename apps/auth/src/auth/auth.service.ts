@@ -9,8 +9,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
 @Injectable()
-export class UserService {
-  private readonly logger = new Logger(UserService.name);
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<User>
