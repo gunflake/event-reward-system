@@ -1,10 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
-import { CallbackError, Document } from 'mongoose';
+import { CallbackError, HydratedDocument, Types } from 'mongoose';
 import { Role } from './role.enum';
 
 @Schema({ timestamps: true })
-export class User extends Document {
+export class User {
+  _id!: Types.ObjectId;
+
   @Prop({ required: true, unique: true })
   email!: string;
 
@@ -16,7 +18,12 @@ export class User extends Document {
 
   @Prop({ type: String, enum: Role, default: Role.USER })
   role!: Role;
+
+  @Prop()
+  lastLoginAt?: Date;
 }
+
+export type UserDocument = HydratedDocument<User>;
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
