@@ -1,14 +1,10 @@
-import { User } from '../user.schema';
+import { User } from '../schema/user.schema';
+import { BaseUserResponseDto } from './base-user-response.dto';
 
 export class LoginResponseDto {
   accessToken!: string;
   refreshToken!: string;
-  user!: {
-    id: string;
-    email: string;
-    nickname: string;
-    role: string;
-  };
+  user!: BaseUserResponseDto;
 
   constructor(partial: Partial<LoginResponseDto>) {
     Object.assign(this, partial);
@@ -22,12 +18,7 @@ export class LoginResponseDto {
     return new LoginResponseDto({
       accessToken,
       refreshToken,
-      user: {
-        id: user._id.toString(),
-        email: user.email,
-        nickname: user.nickname,
-        role: user.role,
-      },
+      user: BaseUserResponseDto.fromUser(user),
     });
   }
 }
