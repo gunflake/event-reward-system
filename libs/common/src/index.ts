@@ -5,3 +5,4 @@ export * from './lib/guards';
 export * from './lib/interceptors';
 export * from './lib/interfaces';
 export * from './lib/middleware';
+export * from './lib/utils';
