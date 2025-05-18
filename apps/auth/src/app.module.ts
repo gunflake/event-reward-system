@@ -5,6 +5,8 @@ import { ConfigModule } from '@nestjs/config';
 import Joi from 'joi';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+
 @Module({
   imports: [
     CommonModule,
@@ -21,6 +23,7 @@ import { AuthModule } from './auth/auth.module';
       autoIndex: false,
     }),
     AuthModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [],

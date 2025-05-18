@@ -23,9 +23,15 @@ async function bootstrap() {
   // 전역 예외 필터 등록
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  const globalPrefix = 'api';
+  const globalPrefix = 'api/auth';
   app.setGlobalPrefix(globalPrefix);
-  const port = process.env.PORT || 8001;
+
+  const port = process.env.AUTH_SERVER_PORT;
+
+  if (!port) {
+    throw new Error('AUTH_SERVER_PORT is not set');
+  }
+
   await app.listen(port);
   Logger.log(
     `🚀 Application is running on: http://localhost:${port}/${globalPrefix}`
