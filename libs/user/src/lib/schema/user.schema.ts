@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { CallbackError, HydratedDocument, Types } from 'mongoose';
-import { Role } from './role.enum';
+import { Role } from '../enum/role.enum';
 
 @Schema({ timestamps: true })
 export class User {
@@ -19,8 +19,11 @@ export class User {
   @Prop({ type: String, enum: Role, default: Role.USER })
   role!: Role;
 
-  @Prop()
+  @Prop({ type: Date })
   lastLoginAt?: Date;
+
+  createdAt!: Date;
+  updatedAt!: Date;
 }
 
 export type UserDocument = HydratedDocument<User>;

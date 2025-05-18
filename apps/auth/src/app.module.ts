@@ -1,12 +1,13 @@
+import { CommonModule, UserHeadersMiddleware } from '@maplestory/common';
 import { DatabaseModule } from '@maplestory/database';
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import Joi from 'joi';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
-
 @Module({
   imports: [
+    CommonModule,
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({
@@ -24,4 +25,8 @@ import { AuthModule } from './auth/auth.module';
   controllers: [AppController],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(UserHeadersMiddleware).forRoutes('*'); // 모든 경로에 적용
+  }
+}
