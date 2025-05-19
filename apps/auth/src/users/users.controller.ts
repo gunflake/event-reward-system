@@ -7,13 +7,13 @@ import {
 import { Body, Controller, Param, Patch, UseGuards } from '@nestjs/common';
 import { UsersService } from './users.service';
 
+@UseGuards(RolesGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Patch(':userId/role')
   @Roles(Role.ADMIN)
-  @UseGuards(RolesGuard)
   async updateUserRole(
     @Param('userId') userId: string,
     @Body() updateUserRoleDto: UpdateUserRoleDto
