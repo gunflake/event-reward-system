@@ -1,5 +1,4 @@
 import {
-  CreateUserDto,
   LoginDto,
   LoginResponseDto,
   RefreshToken,
@@ -21,13 +20,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
+import { CreateUserDto } from './dto';
+import { SignupResponseDto } from './dto/signup-response.dto';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly REFRESH_TOKEN_BYTES = 32;
   private readonly REFRESH_TOKEN_EXPIRY_DAYS = 30;
-  private readonly REFRESH_TOKEN_SALT_ROUNDS = 10;
   private readonly ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 
   constructor(
@@ -37,7 +37,7 @@ export class AuthService {
     private readonly jwtService: JwtService
   ) {}
 
-  async create(userData: CreateUserDto): Promise<void> {
+  async create(userData: CreateUserDto): Promise<SignupResponseDto> {
     try {
       const existingUser = await this.findByEmail(userData.email);
       if (existingUser) {
@@ -53,7 +53,9 @@ export class AuthService {
 
       // 사용자 저장
       const createdUser = new this.userModel(newUserData);
-      await createdUser.save();
+      const newUser = await createdUser.save();
+
+      return SignupResponseDto.fromUser(newUser);
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -159,5 +161,59 @@ export class AuthService {
       memoryCost: 1 << 16,
       parallelism: 2,
     });
+  }
+
+  async refreshTokens(refreshTokenString: string): Promise<LoginResponseDto> {
+    try {
+      // 토큰 검증 및 사용자 찾기
+      const user = await this.validateRefreshToken(refreshTokenString);
+
+      // 새 토큰 발급
+      const accessToken = this.generateAccessToken(user);
+
+      return LoginResponseDto.fromUser(user, accessToken, refreshTokenString);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error(`토큰 갱신 오류: ${error.message}`, error.stack);
+      throw new InternalServerErrorException(
+        '토큰 갱신 중 오류가 발생했습니다'
+      );
+    }
+  }
+
+  private async validateRefreshToken(token: string): Promise<UserDocument> {
+    // 토큰으로 DB에서 검색
+    const hashedTokens = await this.refreshTokenModel
+      .find({
+        isRevoked: false,
+        expiresAt: { $gt: new Date() },
+      })
+      .exec();
+
+    // 모든 유효한 토큰에 대해 확인
+    for (const refreshTokenDoc of hashedTokens) {
+      try {
+        const isValid = await argon2.verify(refreshTokenDoc.token, token);
+        if (isValid) {
+          // 사용자 정보 가져오기
+          const user = await this.userModel
+            .findById(refreshTokenDoc.userId)
+            .exec();
+
+          if (!user) {
+            throw new UnauthorizedException('유효하지 않은 토큰입니다');
+          }
+
+          return user;
+        }
+      } catch (err) {
+        continue; // 검증 실패 시 다음 토큰 확인
+      }
+    }
+
+    throw new UnauthorizedException('유효하지 않은 토큰입니다');
   }
 }
