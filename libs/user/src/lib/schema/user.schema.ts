@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import * as bcrypt from 'bcrypt';
-import { CallbackError, HydratedDocument, Types } from 'mongoose';
+import * as argon2 from 'argon2';
+import { HydratedDocument, Types } from 'mongoose';
 import { Role } from '../enum/role.enum';
 
 @Schema({ timestamps: true })
@@ -32,19 +32,14 @@ export const UserSchema = SchemaFactory.createForClass(User);
 
 // 비밀번호를 해시하는 미들웨어 추가
 UserSchema.pre('save', async function (next) {
-  const user = this;
+  if (!this.isModified('password')) return next();
 
-  // 비밀번호가 변경된 경우에만 해시 (수정 시에도 동작)
-  if (!user.isModified('password')) {
-    return next();
-  }
-
-  try {
-    const salt = 10;
-    const hash = await bcrypt.hash(user.password, salt);
-    user.password = hash;
-    return next();
-  } catch (error) {
-    return next(error as CallbackError);
-  }
+  // ▶ 파라미터: timeCost=3, memoryCost=2^16(=65 536 KB ≒ 64 MB)
+  this.password = await argon2.hash(this.password, {
+    type: argon2.argon2id,
+    timeCost: 3,
+    memoryCost: 1 << 16,
+    parallelism: 2,
+  });
+  next();
 });

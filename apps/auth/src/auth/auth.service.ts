@@ -10,6 +10,7 @@ import {
 } from '@maplestory/user';
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -17,6 +18,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
+import * as argon2 from 'argon2';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
@@ -43,12 +45,9 @@ export class AuthService {
         throw new BadRequestException('이미 등록된 이메일입니다');
       }
 
-      // 비밀번호 해싱
-      const hashedPassword = await this.hashPassword(userData.password);
-
       const newUserData = {
         email: userData.email,
-        password: hashedPassword,
+        password: userData.password,
         nickname: userData.nickname,
         role: Role.USER,
       };
@@ -79,11 +78,6 @@ export class AuthService {
   async login(loginDto: LoginDto): Promise<LoginResponseDto> {
     try {
       const user = await this.validateUser(loginDto.email, loginDto.password);
-      if (!user) {
-        throw new UnauthorizedException(
-          '이메일 또는 비밀번호가 올바르지 않습니다'
-        );
-      }
 
       // 토큰 생성
       const accessToken = this.generateAccessToken(user);
@@ -95,7 +89,7 @@ export class AuthService {
 
       return LoginResponseDto.fromUser(user, accessToken, refreshToken);
     } catch (error) {
-      if (error instanceof UnauthorizedException) {
+      if (error instanceof HttpException) {
         throw error;
       }
 
@@ -113,17 +107,16 @@ export class AuthService {
   ): Promise<UserDocument | null> {
     const user = await this.findByEmail(email);
     if (!user) {
-      return null;
+      throw new BadRequestException('해당 이메일로 가입된 계정이 없습니다');
     }
 
-    const isPasswordValid = await this.comparePasswords(
-      password,
-      user.password
-    );
-    if (!isPasswordValid) {
-      return null;
-    }
+    const isValidated = await argon2.verify(user.password, password);
 
+    if (!isValidated) {
+      throw new UnauthorizedException(
+        '이메일 또는 비밀번호가 올바르지 않습니다'
+      );
+    }
     return user;
   }
 
@@ -163,13 +156,6 @@ export class AuthService {
   private async hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10);
     return bcrypt.hash(password, salt);
-  }
-
-  private async comparePasswords(
-    plainPassword: string,
-    hashedPassword: string
-  ): Promise<boolean> {
-    return bcrypt.compare(plainPassword, hashedPassword);
   }
 
   private async hashToken(token: string): Promise<string> {
