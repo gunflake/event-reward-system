@@ -19,7 +19,6 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from 'argon2';
-import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
 
@@ -153,12 +152,12 @@ export class AuthService {
     return rawToken;
   }
 
-  private async hashPassword(password: string): Promise<string> {
-    const salt = await bcrypt.genSalt(10);
-    return bcrypt.hash(password, salt);
-  }
-
   private async hashToken(token: string): Promise<string> {
-    return bcrypt.hash(token, this.REFRESH_TOKEN_SALT_ROUNDS);
+    return argon2.hash(token, {
+      type: argon2.argon2id,
+      timeCost: 3,
+      memoryCost: 1 << 16,
+      parallelism: 2,
+    });
   }
 }
