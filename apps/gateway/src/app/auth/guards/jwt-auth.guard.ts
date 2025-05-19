@@ -1,15 +1,15 @@
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-
-const publicRoutes = ['/api/auth/login', '/api/auth/signup', '/api'];
+import { appConfig } from '../../app.config';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   canActivate(ctx: ExecutionContext) {
     const req = ctx.switchToHttp().getRequest<Request>();
 
+    console.log(appConfig.publicRoutes.join(','));
     // public routes는 pass
-    if (publicRoutes.includes(req.url)) return true;
+    if (appConfig.publicRoutes.includes(req.url)) return true;
     return super.canActivate(ctx);
   }
 }
