@@ -1,5 +1,6 @@
 import { isValidObjectId } from '@maplestory/common';
 import {
+  BaseUserResponseDto,
   UpdateUserRoleDto,
   User,
   UserDocument,
@@ -21,6 +22,34 @@ export class UsersService {
   constructor(
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>
   ) {}
+
+  async findById(userId: string): Promise<BaseUserResponseDto> {
+    try {
+      if (!isValidObjectId(userId)) {
+        throw new BadRequestException('유효하지 않은 사용자 ID 형식입니다.');
+      }
+
+      const user = await this.userModel.findById(userId).exec();
+
+      if (!user) {
+        throw new BadRequestException('사용자를 찾을 수 없습니다.');
+      }
+
+      return BaseUserResponseDto.fromUser(user);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      this.logger.error(
+        `사용자 조회 중 오류 발생: ${error.message}`,
+        error.stack
+      );
+      throw new InternalServerErrorException(
+        '사용자 조회 중 오류가 발생했습니다.'
+      );
+    }
+  }
 
   async updateUserRole(
     userId: string,
