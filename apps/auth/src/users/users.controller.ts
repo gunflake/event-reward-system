@@ -1,11 +1,7 @@
 import { GetUser, Roles, RolesGuard } from '@maplestory/common';
-import {
-  BaseUserResponseDto,
-  Role,
-  UpdateUserRoleDto,
-  UserRoleUpdateResponseDto,
-} from '@maplestory/user';
+import { BaseUserResponseDto, Role } from '@maplestory/user';
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { UpdateUserRoleDto, UserRoleUpdateResponseDto } from '../auth/dto';
 import { UsersService } from './users.service';
 
 @UseGuards(RolesGuard)

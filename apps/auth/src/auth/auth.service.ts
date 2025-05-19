@@ -1,5 +1,4 @@
 import {
-  CreateUserDto,
   LoginDto,
   LoginResponseDto,
   RefreshToken,
@@ -21,13 +20,14 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { Model } from 'mongoose';
+import { CreateUserDto } from './dto';
+import { SignupResponseDto } from './dto/signup-response.dto';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly REFRESH_TOKEN_BYTES = 32;
   private readonly REFRESH_TOKEN_EXPIRY_DAYS = 30;
-  private readonly REFRESH_TOKEN_SALT_ROUNDS = 10;
   private readonly ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 
   constructor(
@@ -37,7 +37,7 @@ export class AuthService {
     private readonly jwtService: JwtService
   ) {}
 
-  async create(userData: CreateUserDto): Promise<void> {
+  async create(userData: CreateUserDto): Promise<SignupResponseDto> {
     try {
       const existingUser = await this.findByEmail(userData.email);
       if (existingUser) {
@@ -53,7 +53,9 @@ export class AuthService {
 
       // 사용자 저장
       const createdUser = new this.userModel(newUserData);
-      await createdUser.save();
+      const newUser = await createdUser.save();
+
+      return SignupResponseDto.fromUser(newUser);
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;

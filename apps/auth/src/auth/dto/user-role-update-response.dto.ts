@@ -1,6 +1,4 @@
-import { Role } from '../enum/role.enum';
-import { User } from '../schema/user.schema';
-import { BaseUserResponseDto } from './base-user-response.dto';
+import { BaseUserResponseDto, User } from '@maplestory/user';
 
 export class UserRoleUpdateResponseDto {
   user!: BaseUserResponseDto;

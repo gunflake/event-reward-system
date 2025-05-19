@@ -1,11 +1,5 @@
 import { isValidObjectId } from '@maplestory/common';
-import {
-  BaseUserResponseDto,
-  UpdateUserRoleDto,
-  User,
-  UserDocument,
-  UserRoleUpdateResponseDto,
-} from '@maplestory/user';
+import { BaseUserResponseDto, User, UserDocument } from '@maplestory/user';
 import {
   BadRequestException,
   Injectable,
@@ -14,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { UpdateUserRoleDto, UserRoleUpdateResponseDto } from '../auth/dto';
 
 @Injectable()
 export class UsersService {
