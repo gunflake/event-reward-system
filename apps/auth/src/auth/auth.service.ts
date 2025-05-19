@@ -160,4 +160,58 @@ export class AuthService {
       parallelism: 2,
     });
   }
+
+  async refreshTokens(refreshTokenString: string): Promise<LoginResponseDto> {
+    try {
+      // 토큰 검증 및 사용자 찾기
+      const user = await this.validateRefreshToken(refreshTokenString);
+
+      // 새 토큰 발급
+      const accessToken = this.generateAccessToken(user);
+
+      return LoginResponseDto.fromUser(user, accessToken, refreshTokenString);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error(`토큰 갱신 오류: ${error.message}`, error.stack);
+      throw new InternalServerErrorException(
+        '토큰 갱신 중 오류가 발생했습니다'
+      );
+    }
+  }
+
+  private async validateRefreshToken(token: string): Promise<UserDocument> {
+    // 토큰으로 DB에서 검색
+    const hashedTokens = await this.refreshTokenModel
+      .find({
+        isRevoked: false,
+        expiresAt: { $gt: new Date() },
+      })
+      .exec();
+
+    // 모든 유효한 토큰에 대해 확인
+    for (const refreshTokenDoc of hashedTokens) {
+      try {
+        const isValid = await argon2.verify(refreshTokenDoc.token, token);
+        if (isValid) {
+          // 사용자 정보 가져오기
+          const user = await this.userModel
+            .findById(refreshTokenDoc.userId)
+            .exec();
+
+          if (!user) {
+            throw new UnauthorizedException('유효하지 않은 토큰입니다');
+          }
+
+          return user;
+        }
+      } catch (err) {
+        continue; // 검증 실패 시 다음 토큰 확인
+      }
+    }
+
+    throw new UnauthorizedException('유효하지 않은 토큰입니다');
+  }
 }

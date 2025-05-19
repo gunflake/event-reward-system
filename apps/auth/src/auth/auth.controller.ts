@@ -1,6 +1,7 @@
 import { CreateUserDto, LoginDto, LoginResponseDto } from '@maplestory/user';
 import { Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { RefreshTokenDto } from './dto';
 
 @Controller()
 export class AuthController {
@@ -14,5 +15,12 @@ export class AuthController {
   @Post('login')
   async login(@Body() loginDto: LoginDto): Promise<LoginResponseDto> {
     return this.authService.login(loginDto);
+  }
+
+  @Post('refresh')
+  async refreshToken(
+    @Body() refreshTokenDto: RefreshTokenDto
+  ): Promise<LoginResponseDto> {
+    return this.authService.refreshTokens(refreshTokenDto.refreshToken);
   }
 }
