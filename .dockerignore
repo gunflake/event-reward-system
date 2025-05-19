@@ -1,0 +1,39 @@
+# 노드 모듈과 빌드 파일 제외
+node_modules
+dist
+tmp
+.nx
+
+# 버전 관리 파일 제외
+.git
+.gitignore
+.github
+
+# 로그 파일 제외
+*.log
+npm-debug.log*
+
+# 환경 파일 (이미 Docker에서 제공)
+# .env
+
+# IDE 관련 파일
+.idea
+.vscode
+*.sublime-workspace
+*.sublime-project
+
+# 테스트 관련 파일
+coverage
+.nyc_output
+
+# 시스템 파일
+.DS_Store
+Thumbs.db
+
+# 기타 임시 파일
+.tmp
+.temp
+.cursor
+
+Dockerfile
+docker-compose.yml

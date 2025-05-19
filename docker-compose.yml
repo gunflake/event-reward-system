@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - event-reward-network
+
+  auth:
+    build:
+      context: .
+      dockerfile: ./apps/auth/Dockerfile
+    container_name: auth-service
+    restart: always
+    env_file:
+      - ./.env.docker
+      - ./apps/auth/.env.docker
+    ports:
+      - "8001:8001"
+    depends_on:
+      - mongodb
+    networks:
+      - event-reward-network
+
+  event:
+    build:
+      context: .
+      dockerfile: ./apps/event/Dockerfile
+    container_name: event-service
+    restart: always
+    env_file:
+      - ./.env.docker
+      - ./apps/event/.env.docker
+    ports:
+      - "8002:8002"
+    depends_on:
+      - mongodb
+      - auth
+    networks:
+      - event-reward-network
+
+  gateway:
+    build:
+      context: .
+      dockerfile: ./apps/gateway/Dockerfile
+    container_name: gateway-service
+    restart: always
+    env_file:
+      - ./.env.docker
+      - ./apps/gateway/.env.docker
+    ports:
+      - "8000:8000"
+    depends_on:
+      - auth
+      - event
+    networks:
+      - event-reward-network
+
+networks:
+  event-reward-network:
+    driver: bridge
+
+volumes:
+  mongodb_data: 
