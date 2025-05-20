@@ -63,6 +63,8 @@ docker-compose up -d
 
 ## 6. API 엔드포인트 목록
 
+자세한 API 요청/응답 형식은 [API 문서](./API_DOCUMENTATION.md)를 참조하세요.
+
 ### 6.1. Gateway API
 
 Gateway 서버는 모든 요청을 인증하고 적절한 마이크로서비스로 라우팅합니다.
