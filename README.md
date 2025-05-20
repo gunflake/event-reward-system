@@ -61,13 +61,58 @@ docker-compose up -d
 - Event 서버 유저 보상 요청을 검증하는 로직은 event 서버에서 다른 리소스서버(auth server, game server등)로 요청을 보내 해당 유저가 조건을 만족하는지 확인하는 방식으로 구현했습니다.
 - 구현된 Event 조건은 "로그인을 한 번이라도 한 유저"에 대해 검증을 통해 만족하면 보상을 지급하는 이벤트 하나만 구현이 되어있습니다.
 
-### 6. DB 스키마 설계
+## 6. API 엔드포인트 목록
+
+### 6.1. Gateway API
+
+Gateway 서버는 모든 요청을 인증하고 적절한 마이크로서비스로 라우팅합니다.
+
+- `GET /api`: 기본 API 상태 확인
+- `ALL /api/auth/*`: Auth 서버로 모든 요청 프록시
+- `ALL /api/event/*`: Event 서버로 모든 요청 프록시
+
+### 6.2. Auth API
+
+#### 6.2.1. 인증 관련 API
+
+- `POST /api/auth/signup`: 사용자 회원가입
+- `POST /api/auth/login`: 사용자 로그인 (accessToken, refreshToken 발급)
+- `POST /api/auth/refresh`: refreshToken을 이용한 accessToken 재발급
+
+#### 6.2.2. 사용자 관련 API
+
+- `GET /api/auth/users/me`: 현재 로그인한 사용자 정보 조회
+- `GET /api/auth/users/:userId/login-history`: 특정 사용자의 로그인 이력 조회
+- `PATCH /api/auth/users/:userId/role`: 사용자 역할 변경 (ADMIN 권한 필요)
+
+### 6.3. Event API
+
+#### 6.3.1. 이벤트 관리 API
+
+- `POST /api/event/events`: 새 이벤트 생성 (ADMIN, OPERATOR 권한 필요)
+- `GET /api/event/events`: 이벤트 목록 조회 (ADMIN, OPERATOR 권한 필요)
+- `GET /api/event/events/:id`: 특정 이벤트 상세 조회 (ADMIN, OPERATOR 권한 필요)
+
+#### 6.3.2. 보상 관리 API
+
+- `POST /api/event/events/:eventId/rewards`: 이벤트에 보상 추가 (ADMIN, OPERATOR 권한 필요)
+- `GET /api/event/events/:eventId/rewards`: 이벤트의 보상 목록 조회 (ADMIN, OPERATOR 권한 필요)
+- `GET /api/event/events/:eventId/rewards/:id`: 특정 보상 상세 조회 (ADMIN, OPERATOR 권한 필요)
+- `PUT /api/event/events/:eventId/rewards/:id`: 보상 정보 수정 (ADMIN, OPERATOR 권한 필요)
+- `DELETE /api/event/events/:eventId/rewards/:id`: 보상 삭제 (ADMIN, OPERATOR 권한 필요)
+
+#### 6.3.3. 보상 청구 API
+
+- `POST /api/event/events/:eventId/claim`: 이벤트 보상 청구 (모든 인증된 사용자)
+- `GET /api/event/events/claims/me`: 현재 사용자의 보상 청구 내역 조회 (모든 인증된 사용자)
+
+## 7. DB 스키마 설계
 
 프로젝트에서는 MongoDB를 사용하여 각 서비스에 필요한 데이터를 관리합니다. 각 스키마는 NestJS의 Mongoose 모듈을 활용하여 정의되었으며, 서비스 간 명확한 책임 분리를 위해 도메인별로 설계되었습니다.
 
-#### 6.1. 사용자 관련 스키마 (Auth Server)
+#### 7.1. 사용자 관련 스키마 (Auth Server)
 
-##### 6.1.1. User 스키마
+##### 7.1.1. User 스키마
 
 ```typescript
 @Schema({ timestamps: true })
@@ -94,7 +139,7 @@ export class User {
   - Role 기반 권한 관리 시스템 (USER, OPERATOR, AUDITOR, ADMIN)
   - 마지막 로그인 시간 기록으로 사용자 활동 추적 가능
 
-##### 6.1.2. RefreshToken 스키마
+##### 7.1.2. RefreshToken 스키마
 
 ```typescript
 @Schema({ timestamps: true })
@@ -121,9 +166,9 @@ export class RefreshToken {
   - 토큰 폐기(revoke) 기능으로 보안 강화
   - 사용자별 토큰 관리를 위한 userId 인덱싱
 
-#### 6.2. 이벤트 관련 스키마 (Event Server)
+#### 7.2. 이벤트 관련 스키마 (Event Server)
 
-##### 6.2.1. Event 스키마
+##### 7.2.1. Event 스키마
 
 ```typescript
 @Schema({ timestamps: true })
@@ -160,7 +205,7 @@ export class Event {
   - 다양한 이벤트 유형(LOGIN, LEVEL_UP, MISSION_COMPLETE 등) 지원
   - 이벤트 상태(ACTIVE, INACTIVE) 관리
 
-##### 6.2.2. Reward 스키마
+##### 7.2.2. Reward 스키마
 
 ```typescript
 @Schema({ timestamps: true })
@@ -191,7 +236,7 @@ export class Reward {
   - 유연한 보상 값 저장을 위한 Mixed 타입 사용
   - eventId 기반 인덱스로 이벤트별 보상 빠른 조회 가능
 
-##### 6.2.3. RewardClaim 스키마
+##### 7.2.3. RewardClaim 스키마
 
 ```typescript
 @Schema({ timestamps: true })
