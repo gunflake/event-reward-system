@@ -54,6 +54,7 @@ docker-compose up -d
 - Auth 서버는 크게 인증 모듈(Auth Module)과 유저 관리 모듈(User Module)로 구분되어있습니다.
 - login시 refreshToken과 accessToken을 발급합니다. refreshToken은 30일, accessToken은 30m 유효시간으로 설정을 하였고, refreshToken을 이용해서 accessToken을 재발급할 수 있도록 구현했습니다.
 - refreshToken을 도입한 이유는 UX을 올리기 위해 고안되었습니다. 현재 발급된 RefreshToken을 목록으로 확인하고 원하는 RefreshToken을 revoke를 할 수 있도록 설계하였으나 과제 제출 시간 문제로 RefreshToken에 관련된 추가 관리 부분은 구현하지 못했습니다.
+- **ADMIN** 계정은 DB에서 직접 사용자가 ADMIN으로 변경하는 방식으로 설계했습니다. 따라서 ADMIN으로 설정하는 코드가 존재하지 않습니다.
 
 ### 5.3 Event 서버
 
