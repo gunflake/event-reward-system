@@ -30,14 +30,16 @@ export class ProxyService {
       ...safe
     } = req.headers as Record<string, string>;
 
-    const url = base + req.originalUrl;
+    // 기본 경로와 경로 부분(쿼리스트링 제외)만 결합
+    const path = req.path;
+    const url = `${base}${path}`;
 
     try {
       const res = await firstValueFrom(
         this.http.request({
           method: req.method as Method,
           url: url,
-          params: req.query,
+          params: req.query, // 쿼리 파라미터는 여기서만 전달
           data: req.body,
           headers: { ...safe, ...extraHeaders }, // 안전한 헤더만 전달
         })
