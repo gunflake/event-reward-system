@@ -1,4 +1,4 @@
-import { isValidObjectId } from '@maplestory/common';
+import { isValidObjectId, UserInfo } from '@maplestory/common';
 import {
   BadRequestException,
   ConflictException,
@@ -6,6 +6,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -33,17 +34,12 @@ export class ClaimsService {
     private readonly authIntegrationService: AuthIntegrationService
   ) {}
 
-  /**
-   * 보상 청구 요청 생성
-   *
-   * @param eventId 이벤트 ID
-   * @param userId 사용자 ID
-   * @returns 생성된 보상 청구 정보
-   */
   async createClaim(
     eventId: string,
-    userId: string
+    user: UserInfo
   ): Promise<ClaimResponseDto> {
+    const userId = user.id;
+
     try {
       // ObjectId 유효성 검사
       if (!isValidObjectId(eventId)) {
@@ -84,65 +80,98 @@ export class ClaimsService {
         })
         .exec();
 
+      this.logger.log('중복 요청 확인 결과', existingClaim);
+
+      // 처리가 완료된 claim 객체
+      let claimToProcess;
+
       if (existingClaim) {
         if (existingClaim.status === ClaimStatus.APPROVED) {
           throw new BadRequestException('이미 승인된 보상 요청이 있습니다');
         } else if (existingClaim.status === ClaimStatus.PENDING) {
           throw new BadRequestException('처리 중인 보상 요청이 있습니다');
         } else {
-          // 이전에 거절된 요청이 있는 경우 새로운 요청 허용 (추가 이벤트 조건 달성 등)
+          // 이전에 거절된 요청이 있는 경우 기존 요청을 업데이트
+          claimToProcess = existingClaim;
+          claimToProcess.status = ClaimStatus.PENDING; // 상태 초기화
+          claimToProcess.comment = '';
         }
+      } else {
+        // 기존 요청이 없는 경우 새로운 claim 생성
+        claimToProcess = new this.rewardClaimModel({
+          userId: userObjectId,
+          eventId: eventObjectId,
+          status: ClaimStatus.PENDING,
+        });
       }
-
-      // 보상 청구 생성
-      const newClaim = new this.rewardClaimModel({
-        userId: userObjectId,
-        eventId: eventObjectId,
-        status: ClaimStatus.PENDING,
-      });
 
       // 조건 검증 및 보상 처리
-      const areConditionsMet = await this.verifyEventConditions(
-        event,
-        userObjectId
-      );
+      try {
+        const areConditionsMet = await this.verifyEventConditions(event, user);
 
-      if (areConditionsMet) {
-        // 자동 승인 처리
-        newClaim.status = ClaimStatus.APPROVED;
-        newClaim.verifiedAt = new Date();
-        newClaim.verifiedBy = userObjectId; // 시스템에 의한 자동 검증
+        this.logger.log('조건 검증 결과', areConditionsMet);
 
-        // 보상 정보 추가
-        const rewards = await this.rewardModel
-          .find({ eventId: eventObjectId })
-          .exec();
+        if (areConditionsMet) {
+          // 자동 승인 처리
+          claimToProcess.status = ClaimStatus.APPROVED;
+          claimToProcess.verifiedAt = new Date();
+          claimToProcess.verifiedBy = userObjectId; // 시스템에 의한 자동 검증
 
-        // 지급할 보상 정보 설정
-        newClaim.rewards = rewards.map((reward) => ({
-          rewardId: reward._id,
-          type: reward.type,
-          value: reward.value,
-          issuedAt: new Date(),
-        }));
-      } else {
-        // 조건 미충족 처리
-        newClaim.status = ClaimStatus.REJECTED;
-        newClaim.verifiedAt = new Date();
-        newClaim.verifiedBy = userObjectId; // 시스템에 의한 자동 검증
-        newClaim.comment = '조건 미충족';
+          // 보상 정보 추가
+          const rewards = await this.rewardModel
+            .find({ eventId: eventObjectId })
+            .exec();
+
+          // 지급할 보상 정보 설정
+          claimToProcess.rewards = rewards.map((reward) => ({
+            rewardId: reward._id,
+            type: reward.type,
+            value: reward.value,
+            issuedAt: new Date(),
+          }));
+        } else {
+          // 조건 미충족 처리
+          claimToProcess.status = ClaimStatus.REJECTED;
+          claimToProcess.verifiedAt = new Date();
+          claimToProcess.verifiedBy = userObjectId; // 시스템에 의한 자동 검증
+          claimToProcess.comment = '조건 미충족';
+        }
+
+        // 검증이 완료된 청구 저장 (새로운 claim이든 기존 claim이든)
+        const savedClaim = await claimToProcess.save();
+        return this.mapClaimToResponseDto(savedClaim);
+      } catch (verificationError) {
+        if (verificationError instanceof ServiceUnavailableException) {
+          // Auth 서버 장애 등으로 인한 검증 실패는 에러 반환 (저장하지 않음)
+          this.logger.warn(
+            `외부 서비스 장애로 인한 검증 실패: ${verificationError.message}`
+          );
+          throw new BadRequestException(
+            '서비스 검증 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+          );
+        } else {
+          // 그 외 검증 오류도 에러 반환 (저장하지 않음)
+          this.logger.error(
+            `조건 검증 중 오류 발생: ${verificationError.message}`,
+            verificationError.stack
+          );
+          throw new BadRequestException(
+            '보상 조건 검증 중 오류가 발생했습니다.'
+          );
+        }
       }
-
-      // 저장
-      const savedClaim = await newClaim.save();
-
-      // 응답 형식 반환
-      return this.mapClaimToResponseDto(savedClaim);
     } catch (error) {
       // 중복 키 오류 (이미 청구한 경우)
       if (error.code === 11000) {
         throw new BadRequestException(
           '이미 해당 이벤트에 대한 보상을 요청했습니다'
+        );
+      }
+
+      // 서비스 장애 오류는 BadRequestException으로 변환
+      if (error instanceof ServiceUnavailableException) {
+        throw new BadRequestException(
+          '서비스 검증 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
         );
       }
 
@@ -165,39 +194,28 @@ export class ClaimsService {
     }
   }
 
-  /**
-   * 이벤트 조건 충족 여부 검증
-   *
-   * Auth 서버에서 사용자의 로그인 이력을 확인하여 조건 충족 여부 판단
-   *
-   * @param event 이벤트 정보
-   * @param userId 사용자 ID
-   * @returns 조건 충족 여부
-   */
   private async verifyEventConditions(
     event: EventDocument,
-    userId: Types.ObjectId
+    user: UserInfo
   ): Promise<boolean> {
     try {
-      this.logger.debug(`사용자 ${userId}의 이벤트 조건 충족 여부 검증 시작`);
-
       // 이벤트 타입에 따른 검증 로직 분기
       switch (event.type) {
         case EventType.LOGIN:
-          // Auth 서버에서 로그인 이력 확인
-          const hasLoggedIn = await this.authIntegrationService.hasUserLoggedIn(
-            userId.toString()
-          );
-          this.logger.debug(
-            `사용자 ${userId}의 로그인 이력 확인 결과: ${hasLoggedIn}`
-          );
-          return hasLoggedIn;
+          return await this.verifyLoginCondition(user);
 
         default:
           this.logger.warn(`지원하지 않는 이벤트 타입: ${event.type}`);
           return false;
       }
     } catch (error) {
+      // ServiceUnavailableException은 BadRequestException으로 변환하여 전파
+      if (error instanceof ServiceUnavailableException) {
+        throw new ServiceUnavailableException(
+          '서비스 검증 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+        );
+      }
+
       this.logger.error(`조건 검증 중 오류: ${error.message}`, error.stack);
       throw new InternalServerErrorException(
         '조건 검증 중 오류가 발생했습니다'
@@ -205,12 +223,30 @@ export class ClaimsService {
     }
   }
 
-  /**
-   * 보상 청구 정보를 응답 DTO로 변환
-   *
-   * @param claim 보상 청구 문서
-   * @returns 변환된 응답 DTO
-   */
+  private async verifyLoginCondition(user: UserInfo): Promise<boolean> {
+    try {
+      // Auth 서버에서 로그인 이력 확인
+      const hasLoggedIn = await this.authIntegrationService.hasUserLoggedIn(
+        user
+      );
+
+      this.logger.log('로그인 이력 확인 결과', hasLoggedIn);
+      return hasLoggedIn;
+    } catch (serviceError) {
+      if (serviceError instanceof ServiceUnavailableException) {
+        this.logger.warn(
+          `Auth 서비스 일시적 장애로 인한 확인 실패: ${serviceError.message}`
+        );
+        // 서비스 장애는 BadRequestException으로 변환하여 전파
+        throw new ServiceUnavailableException(
+          '서비스 검증 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+        );
+      }
+      // 그 외 오류는 조건 미충족으로 처리
+      return false;
+    }
+  }
+
   private mapClaimToResponseDto(claim: RewardClaimDocument): ClaimResponseDto {
     return {
       id: claim._id.toString(),

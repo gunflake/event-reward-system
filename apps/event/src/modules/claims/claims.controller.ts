@@ -1,4 +1,4 @@
-import { GetUser, Roles, RolesGuard } from '@maplestory/common';
+import { GetUser, Roles, RolesGuard, UserInfo } from '@maplestory/common';
 import { Role } from '@maplestory/user';
 import { Controller, Logger, Param, Post, UseGuards } from '@nestjs/common';
 import { ClaimsService } from './claims.service';
@@ -25,11 +25,8 @@ export class ClaimsController {
   @Roles(Role.USER, Role.ADMIN)
   async claimEventReward(
     @Param('eventId') eventId: string,
-    @GetUser('id') userId: string
+    @GetUser() user: UserInfo
   ): Promise<ClaimResponseDto> {
-    this.logger.debug(
-      `사용자 ${userId}가 이벤트 ${eventId}의 보상을 요청합니다.`
-    );
-    return this.claimsService.createClaim(eventId, userId);
+    return this.claimsService.createClaim(eventId, user);
   }
 }
