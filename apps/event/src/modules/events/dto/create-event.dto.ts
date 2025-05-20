@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { EventConditionType } from '../enums/event-condition-type.enum';
 import { EventStatus } from '../enums/event-status.enum';
+import { EventType } from '../enums/event-type.enum';
 import { ValidateConditionValue } from '../validators/condition-value.validator';
 
 export class EventConditionDto {
@@ -52,4 +53,7 @@ export class CreateEventDto {
   @IsEnum(EventStatus)
   @IsOptional()
   status: EventStatus;
+
+  @IsEnum(EventType)
+  type: EventType;
 }

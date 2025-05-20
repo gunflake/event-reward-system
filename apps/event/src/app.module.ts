@@ -4,7 +4,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import Joi from 'joi';
 import { AppController } from './app.controller';
-import { EventsModule } from './modules';
+import { ClaimsModule, EventsModule } from './modules';
 
 @Module({
   imports: [
@@ -12,6 +12,7 @@ import { EventsModule } from './modules';
       isGlobal: true,
       validationSchema: Joi.object({
         MONGODB_EVENT_URI: Joi.string().required(),
+        AUTH_SERVER_URL: Joi.string().required(),
       }),
     }),
     DatabaseModule.forRoot(process.env.MONGODB_EVENT_URI, {
@@ -20,6 +21,7 @@ import { EventsModule } from './modules';
       autoIndex: false,
     }),
     EventsModule,
+    ClaimsModule,
   ],
   controllers: [AppController],
   providers: [],
