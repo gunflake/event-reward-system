@@ -3,6 +3,7 @@
  * This is only a minimal backend to get started.
  */
 
+import { HttpExceptionFilter } from '@maplestory/common';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -20,6 +21,9 @@ async function bootstrap() {
       forbidNonWhitelisted: true, // DTO에 정의되지 않은 속성이 있으면 요청 거부
     })
   );
+
+  // 전역 예외 필터 등록
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   const port = process.env.EVENT_SERVER_PORT;
 

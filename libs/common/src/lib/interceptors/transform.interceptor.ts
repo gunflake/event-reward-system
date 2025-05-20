@@ -25,7 +25,7 @@ export class TransformInterceptor<T>
         response.status(200);
 
         // void 반환 또는 undefined/null인 경우 data 필드 없이 success만 true로 설정
-        if (data === undefined || data === null) {
+        if (!data) {
           return {
             success: true,
           };
