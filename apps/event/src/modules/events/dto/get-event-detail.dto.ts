@@ -1,4 +1,5 @@
 import { EventStatus } from '../enums/event-status.enum';
+import { RewardResponseDto } from './get-reward-response.dto';
 
 export class EventConditionDetailDto {
   type: string;
@@ -17,4 +18,5 @@ export class EventDetailResponseDto {
   createdBy: string;
   createdAt: Date;
   updatedAt: Date;
+  rewards?: RewardResponseDto[];
 }

@@ -9,6 +9,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Event, EventDocument } from '../../schemas/event.schema';
+import { Reward, RewardDocument } from '../../schemas/reward.schema';
 import { CreateEventDto } from './dto/create-event.dto';
 import { EventDetailResponseDto } from './dto/get-event-detail.dto';
 import {
@@ -16,13 +17,15 @@ import {
   GetEventsResponseDto,
 } from './dto/get-events-response.dto';
 import { GetEventsDto } from './dto/get-events.dto';
+import { RewardResponseDto } from './dto/get-reward-response.dto';
 
 @Injectable()
 export class EventsService {
   private readonly logger = new Logger(EventsService.name);
 
   constructor(
-    @InjectModel(Event.name) private eventModel: Model<EventDocument>
+    @InjectModel(Event.name) private eventModel: Model<EventDocument>,
+    @InjectModel(Reward.name) private rewardModel: Model<RewardDocument>
   ) {}
 
   async createEvent(
@@ -139,6 +142,25 @@ export class EventsService {
         throw new NotFoundException('해당 ID의 이벤트를 찾을 수 없습니다');
       }
 
+      // 이벤트에 연결된 보상 조회
+      const eventObjectId = new Types.ObjectId(eventId);
+      const rewards = await this.rewardModel
+        .find({ eventId: eventObjectId })
+        .exec();
+
+      // 보상 데이터 형식 변환
+      const rewardResponses: RewardResponseDto[] = rewards.map((reward) => ({
+        id: reward._id.toString(),
+        eventId: reward.eventId.toString(),
+        name: reward.name,
+        type: reward.type,
+        value: reward.value,
+        quantity: reward.quantity,
+        description: reward.description,
+        createdAt: reward.createdAt,
+        updatedAt: reward.updatedAt,
+      }));
+
       // 응답 데이터 형식 변환
       const eventDetail: EventDetailResponseDto = {
         id: event._id.toString(),
@@ -155,6 +177,7 @@ export class EventsService {
         createdBy: event.createdBy.toString(),
         createdAt: event.createdAt,
         updatedAt: event.updatedAt,
+        rewards: rewardResponses,
       };
 
       return eventDetail;
