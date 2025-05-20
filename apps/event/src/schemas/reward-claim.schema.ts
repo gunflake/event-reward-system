@@ -22,6 +22,12 @@ export class IssuedReward {
   rewardId: Types.ObjectId;
 
   /**
+   * 보상 이름
+   */
+  @Prop({ required: true })
+  name: string;
+
+  /**
    * 보상 유형 (POINT, ITEM, COUPON)
    */
   @Prop({ required: true })

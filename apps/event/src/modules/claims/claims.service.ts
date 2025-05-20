@@ -19,6 +19,8 @@ import {
 import { Reward, RewardDocument } from '../../schemas/reward.schema';
 import { EventStatus } from '../events/enums/event-status.enum';
 import { EventType } from '../events/enums/event-type.enum';
+import { ClaimListQueryDto } from './dto/claim-list-query.dto';
+import { ClaimListResponseDto } from './dto/claim-list-response.dto';
 import { ClaimResponseDto } from './dto/claim-response.dto';
 import { AuthIntegrationService } from './services/auth-integration.service';
 
@@ -125,6 +127,7 @@ export class ClaimsService {
           // 지급할 보상 정보 설정
           claimToProcess.rewards = rewards.map((reward) => ({
             rewardId: reward._id,
+            name: reward.name,
             type: reward.type,
             value: reward.value,
             issuedAt: new Date(),
@@ -257,5 +260,169 @@ export class ClaimsService {
       createdAt: claim.createdAt,
       comment: claim.comment,
     };
+  }
+
+  async getUserClaims(
+    queryDto: ClaimListQueryDto,
+    userId: string
+  ): Promise<ClaimListResponseDto> {
+    const { page = 1, limit = 10, eventId, status } = queryDto;
+    const skip = (page - 1) * limit;
+
+    try {
+      // ObjectId 유효성 검사
+      if (!isValidObjectId(userId)) {
+        throw new BadRequestException('유효하지 않은 사용자 ID 형식입니다');
+      }
+
+      const userObjectId = new Types.ObjectId(userId);
+
+      // 필터 조건 생성
+      const where: any = { userId: userObjectId };
+      if (eventId && isValidObjectId(eventId)) {
+        where.eventId = new Types.ObjectId(eventId);
+      }
+      if (status) {
+        where.status = status;
+      }
+
+      // 데이터베이스에서 사용자의 보상 요청 내역 조회
+      const [claims, total] = await Promise.all([
+        this.rewardClaimModel
+          .find(where)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .populate({
+            path: 'eventId',
+            select: 'name',
+          })
+          .populate({
+            path: 'rewards.rewardId',
+            select: 'name type value',
+          })
+          .exec(),
+        this.rewardClaimModel.countDocuments(where).exec(),
+      ]);
+
+      this.logger.debug(`조회된 보상 요청 수: ${claims.length}`);
+
+      // 응답 형식에 맞게 데이터 변환
+      const formattedClaimsPromises = claims.map(async (claim) => {
+        // 이벤트 정보 처리
+        let eventName = '알 수 없는 이벤트';
+        if (claim.eventId) {
+          if (
+            typeof claim.eventId === 'object' &&
+            (claim.eventId as any).name
+          ) {
+            eventName = (claim.eventId as any).name;
+          } else {
+            // populate가 제대로 작동하지 않는 경우 직접 이벤트 정보 조회
+            try {
+              const eventObjectId =
+                typeof claim.eventId === 'object'
+                  ? (claim.eventId as Types.ObjectId)
+                  : new Types.ObjectId(String(claim.eventId));
+
+              const eventDoc = await this.eventModel
+                .findById(eventObjectId)
+                .exec();
+              if (eventDoc) {
+                eventName = eventDoc.name;
+              }
+            } catch (err) {
+              this.logger.warn(`이벤트 정보 조회 중 오류: ${err.message}`);
+            }
+          }
+        }
+
+        // 보상 정보 처리
+        const rewards = [];
+
+        if (claim.rewards && claim.rewards.length > 0) {
+          for (const reward of claim.rewards) {
+            let rewardName = null;
+            let rewardType = reward.type;
+            let rewardValue = reward.value;
+            let rewardId = reward.rewardId ? reward.rewardId.toString() : null;
+
+            // 이미 reward 객체에 name 필드가 있는 경우 우선 사용
+            if (reward.name) {
+              rewardName = reward.name;
+            }
+            // populate된 rewardId 객체에서 정보 추출
+            else if (reward.rewardId && typeof reward.rewardId === 'object') {
+              const rewardObj = reward.rewardId as any;
+              rewardName = rewardObj.name || null;
+              rewardType = rewardObj.type || reward.type;
+              rewardValue = rewardObj.value || reward.value;
+            }
+            // populate가 작동하지 않는 경우 직접 조회
+            else if (reward.rewardId) {
+              try {
+                const rewardObjectId =
+                  typeof reward.rewardId === 'object'
+                    ? (reward.rewardId as Types.ObjectId)
+                    : new Types.ObjectId(String(reward.rewardId));
+
+                const rewardDoc = await this.rewardModel
+                  .findById(rewardObjectId)
+                  .exec();
+                if (rewardDoc) {
+                  rewardName = rewardDoc.name;
+                }
+              } catch (err) {
+                this.logger.warn(`보상 정보 조회 중 오류: ${err.message}`);
+              }
+            }
+
+            rewards.push({
+              id: rewardId,
+              name: rewardName || '알 수 없는 보상',
+              type: rewardType,
+              value: rewardValue,
+            });
+          }
+        }
+
+        return {
+          id: claim._id.toString(),
+          userId: claim.userId.toString(),
+          eventId: claim.eventId.toString(),
+          eventName: eventName,
+          rewards: rewards,
+          status: claim.status,
+          createdAt: claim.createdAt,
+          updatedAt: claim.updatedAt,
+        };
+      });
+
+      const formattedClaims = await Promise.all(formattedClaimsPromises);
+
+      return {
+        data: formattedClaims,
+        total,
+        page: Number(page),
+        limit: Number(limit),
+      };
+    } catch (error) {
+      this.logger.error(
+        `사용자 보상 요청 내역 조회 중 오류: ${error.message}`,
+        error.stack
+      );
+
+      // 이미 처리된 예외는 그대로 전달
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException(
+        '보상 요청 내역 조회 중 오류가 발생했습니다'
+      );
+    }
   }
 }
