@@ -22,7 +22,7 @@ export class ClaimsController {
   constructor(private readonly claimsService: ClaimsService) {}
 
   @Post(':eventId/claim')
-  @Roles(Role.USER, Role.ADMIN)
+  @Roles(Role.USER, Role.ADMIN, Role.OPERATOR, Role.AUDITOR)
   async claimEventReward(
     @Param('eventId') eventId: string,
     @GetUser() user: UserInfo
@@ -31,7 +31,7 @@ export class ClaimsController {
   }
 
   @Get('claims/me')
-  @Roles(Role.USER, Role.ADMIN)
+  @Roles(Role.USER, Role.ADMIN, Role.OPERATOR, Role.AUDITOR)
   async getUserClaims(
     @Query() queryDto: ClaimListQueryDto,
     @GetUser() user: UserInfo
