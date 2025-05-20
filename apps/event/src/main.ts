@@ -3,7 +3,7 @@
  * This is only a minimal backend to get started.
  */
 
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
@@ -11,6 +11,15 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const globalPrefix = 'api/event';
   app.setGlobalPrefix(globalPrefix);
+
+  // 전역 ValidationPipe 설정
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true, // 자동으로 타입 변환 활성화
+      whitelist: true, // DTO에 정의되지 않은 속성은 제거
+      forbidNonWhitelisted: true, // DTO에 정의되지 않은 속성이 있으면 요청 거부
+    })
+  );
 
   const port = process.env.EVENT_SERVER_PORT;
 
