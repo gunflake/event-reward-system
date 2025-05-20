@@ -1,12 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import { EventStatus } from '../modules/events/enums/event-status.enum';
+import { EventType } from '../modules/events/enums/event-type.enum';
 
 /**
  * 이벤트 조건 스키마
  * 이벤트 달성을 위한 각종 조건들을 정의함
  */
-@Schema({ timestamps: true })
 export class EventCondition {
   /**
    * 조건의 유형 (LOGIN_DAYS, REACH_LEVEL, COMPLETE_MISSION 등)
@@ -56,6 +56,17 @@ export class Event {
    */
   @Prop({ required: true })
   description!: string;
+
+  /**
+   * 이벤트 타입
+   * 이벤트의 종류를 나타내며, 검증 방식 결정에 사용됨
+   */
+  @Prop({
+    required: true,
+    type: String,
+    enum: Object.values(EventType),
+  })
+  type!: EventType;
 
   /**
    * 이벤트 시작일
@@ -113,6 +124,11 @@ export const EventSchema = SchemaFactory.createForClass(Event);
 EventSchema.index({ status: 1 });
 
 /**
+ * 이벤트 타입으로 필터링하기 위한 인덱스
+ */
+EventSchema.index({ type: 1 });
+
+/**
  * 시작일로 검색하기 위한 인덱스
  */
 EventSchema.index({ startDate: 1 });
@@ -132,3 +148,9 @@ EventSchema.index({ createdBy: 1 });
  * 활성 이벤트 목록 등을 빠르게 조회할 때 사용
  */
 EventSchema.index({ status: 1, startDate: 1, endDate: 1 });
+
+/**
+ * 타입, 상태로 복합 검색하기 위한 인덱스
+ * 특정 타입의 활성 이벤트를 빠르게 조회할 때 사용
+ */
+EventSchema.index({ type: 1, status: 1 });
