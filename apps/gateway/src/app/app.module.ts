@@ -1,4 +1,4 @@
-import { RolesGuard } from '@maplestory/common';
+import { CommonModule, RolesGuard } from '@maplestory/common';
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
@@ -11,6 +11,7 @@ import { ProxyService } from './proxy/proxy.service';
 
 @Module({
   imports: [
+    CommonModule,
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: Joi.object({
