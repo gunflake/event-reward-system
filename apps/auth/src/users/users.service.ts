@@ -5,6 +5,7 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -42,6 +43,44 @@ export class UsersService {
       );
       throw new InternalServerErrorException(
         '사용자 조회 중 오류가 발생했습니다.'
+      );
+    }
+  }
+
+  async getUserLoginHistory(userId: string) {
+    try {
+      if (!isValidObjectId(userId)) {
+        throw new BadRequestException('유효하지 않은 사용자 ID 형식입니다.');
+      }
+
+      const user = await this.userModel.findById(userId).exec();
+
+      if (!user) {
+        throw new NotFoundException('사용자를 찾을 수 없습니다.');
+      }
+
+      // 로그인 이력 여부 확인
+      const hasLoginHistory = !!user.lastLoginAt;
+
+      return {
+        userId: user._id.toString(),
+        hasLoginHistory,
+        lastLoginAt: user.lastLoginAt || null,
+      };
+    } catch (error) {
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+
+      this.logger.error(
+        `사용자 로그인 이력 조회 중 오류 발생: ${error.message}`,
+        error.stack
+      );
+      throw new InternalServerErrorException(
+        '사용자 로그인 이력 조회 중 오류가 발생했습니다.'
       );
     }
   }

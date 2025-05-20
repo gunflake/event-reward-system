@@ -1,6 +1,14 @@
-import { GetUser, Roles, RolesGuard } from '@maplestory/common';
+import { GetUser, Roles, RolesGuard, UserInfo } from '@maplestory/common';
 import { BaseUserResponseDto, Role } from '@maplestory/user';
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { UpdateUserRoleDto, UserRoleUpdateResponseDto } from '../auth/dto';
 import { UsersService } from './users.service';
 
@@ -12,6 +20,18 @@ export class UsersController {
   @Get('me')
   async getMe(@GetUser('id') userId: string): Promise<BaseUserResponseDto> {
     return this.usersService.findById(userId);
+  }
+
+  @Get(':userId/login-history')
+  async getUserLoginHistory(
+    @Param('userId') userId: string,
+    @GetUser() user: UserInfo
+  ) {
+    if (user.role === Role.USER && user.id !== userId) {
+      throw new ForbiddenException('권한이 없습니다.');
+    }
+
+    return this.usersService.getUserLoginHistory(userId);
   }
 
   @Patch(':userId/role')
