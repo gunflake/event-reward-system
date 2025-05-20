@@ -5,11 +5,13 @@ import {
   Controller,
   Get,
   Logger,
+  Param,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { CreateEventDto } from './dto/create-event.dto';
+import { EventDetailResponseDto } from './dto/get-event-detail.dto';
 import { GetEventsResponseDto } from './dto/get-events-response.dto';
 import { GetEventsDto } from './dto/get-events.dto';
 import { EventsService } from './events.service';
@@ -35,5 +37,13 @@ export class EventsController {
   @Roles(Role.ADMIN, Role.OPERATOR)
   async getEvents(@Query() query: GetEventsDto): Promise<GetEventsResponseDto> {
     return this.eventsService.getEvents(query);
+  }
+
+  @Get(':id')
+  @Roles(Role.ADMIN, Role.OPERATOR)
+  async getEventById(
+    @Param('id') eventId: string
+  ): Promise<EventDetailResponseDto> {
+    return this.eventsService.getEventById(eventId);
   }
 }
